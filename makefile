@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall
 
-TARGET = simpleCSVsorter
+TARGET = scannerCSVsorter
 TARGET2 = mergesort
 RM = rm
 
