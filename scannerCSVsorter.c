@@ -378,19 +378,19 @@ int sortCsv(char** argv, char* filePath, char* outputDir){
     	int fd = fileno(file);
 
     	printf("File Descriptor: %d\n", fd);
-    	return 0;
+    	//return 0;
 
 
         char columnsLine[2000];
         char buffer;
         int lineCounter = 0;
         if(DEBUG) { printf("Reading in first line\n"); }
-        read(0, &buffer, 1);
+        read(fd, &buffer, 1);
         while(buffer != '\n'){
             if(DEBUG){printf("%c", buffer);}
             columnsLine[lineCounter] = buffer;
             lineCounter++;
-            read(0, &buffer, 1);
+            read(fd, &buffer, 1);
         }
         if(DEBUG){ printf("\n"); }
         columnsLine[lineCounter] = '\0';
@@ -473,7 +473,7 @@ int sortCsv(char** argv, char* filePath, char* outputDir){
         char individualMovieLine[500];
         int movieLineCharacterIndex = 0;
         if(DEBUG2){ printf("Line %d\n", __LINE__);}
-        while(read(0, &buffer, 1) != 0){
+        while(read(fd, &buffer, 1) != 0){
             if(buffer == '"'){
                 quotationMark = !quotationMark;
                 individualMovieLine[movieLineCharacterIndex] = buffer;
