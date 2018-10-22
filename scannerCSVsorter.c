@@ -8,7 +8,7 @@
 
 typedef enum { false, true } bool;
 
-const int DEBUG = 0;
+const int DEBUG = 1;
 const int DEBUG2 = 0;
 
 // arg: pointer to movieLine
@@ -48,30 +48,34 @@ int initMovieLine(movieLine* movie){
 	return 0;
 }
 
-int printMoviesAsCsv(movieLine* head, int numColumns, char** columnNames){
+int printMoviesAsCsv(movieLine* head, int numColumns, char** columnNames, char* filePath){
 	int i;
+
+	FILE *fp = fopen(filePath, "w");
 	for (i = 0; i < numColumns; ++i)
 	{
-		printf("%s", columnNames[i]);
+		fprintf(fp, "%s", columnNames[i]);
 		if(i < numColumns - 1){
-			printf(",");
+			fprintf(fp, ",");
 		} else {
-			printf("\r\n");
+			fprintf(fp, "\r\n");
 		}
 	}
 	movieLine* curr = head;
 	while(curr != NULL){
 		if(curr->next != NULL){
 			if(curr->csvLine != NULL){
-				printf("%s\n", curr->csvLine);
+				fprintf(fp, "%s\n", curr->csvLine);
 			}
 		} else {
 			if(curr->csvLine != NULL){
-				printf("%s", curr->csvLine);
+				fprintf(fp, "%s", curr->csvLine);
 			}
 		}
 		curr = curr->next;
 	}
+
+	fclose(fp);
 	return 0;
 }
 
@@ -299,6 +303,58 @@ int isCSV(char* filePath){
 	return strcmp(csvPortion, ".csv");
 }
 
+char* fileStringAppend(char* directory, char* fileName);
+
+char* getOutputCSVFilePath(char* originalFilePath, char* outputDir, char* columnName){
+	if(strcmp(outputDir, "./") != 0){
+		// want to remove .csv from file path first
+		char* filePathCopy = malloc(sizeof(char) * (strlen(originalFilePath) + 1));
+		strcpy(filePathCopy, originalFilePath);
+
+		filePathCopy[strlen(originalFilePath) - 4] = '\0';
+
+		// now we want to remove all the beginning of the path
+		int i;
+		for(i = strlen(filePathCopy); i > -1; i--)
+		{
+			if(filePathCopy[i] == '/')
+			{
+				filePathCopy = &filePathCopy[i + 1];
+			}
+		}
+		
+		//printf("FILE WITHOUT CSV AND PATH %s\n", filePathCopy);
+
+		char* temp = fileStringAppend(outputDir, filePathCopy);
+		char* temp2 = fileStringAppend(temp, "-sorted-");
+		char* temp3 = fileStringAppend(temp2, columnName);
+		char* temp4 = fileStringAppend(temp3, ".csv");
+
+		free(temp);
+		free(temp2);
+		free(temp3);
+		if(DEBUG) { printf("Final csv output path %s\n", temp4); }
+		return temp4;
+
+	} else {
+		// want to remove .csv from file path first
+		char* filePathCopy = malloc(sizeof(char) * (strlen(originalFilePath) + 1));
+		strcpy(filePathCopy, originalFilePath);
+
+		filePathCopy[strlen(originalFilePath) - 4] = '\0';
+
+		char* temp2 = fileStringAppend(filePathCopy, "-sorted-");
+		char* temp3 = fileStringAppend(temp2, columnName);
+		char* temp4 = fileStringAppend(temp3, ".csv");
+
+		free(temp2);
+		free(temp3);
+
+		if(DEBUG) { printf("Final csv output path %s\n", temp4); }
+		return temp4;
+	}
+}
+
 // sort CSV as per the specifications of project 0
 // args: argv from the program input, filepath to file for sorting
 // ret: 0 if success, 1 if something bad happened
@@ -306,11 +362,17 @@ int sortCsv(char** argv, char* filePath, char* outputDir){
         //check if command is correct
     if (strcmp(argv[1], "-c") == 0){
 
+    	char* outputFilePath;
     	//Check if file is a csv
     	if(isCSV(filePath) != 0){
     		printf("%s is NOT a csv\n", filePath);
     		return 1;
+    	} else {
+    		outputFilePath = getOutputCSVFilePath(filePath, outputDir, argv[2]);
+    		printf("%s IS a csv\n", filePath);
     	}
+
+
 
     	FILE* file = fopen(filePath, "r");
     	int fd = fileno(file);
@@ -498,7 +560,7 @@ int sortCsv(char** argv, char* filePath, char* outputDir){
             if (counter == 1)   //sort only if the column name actually exists
             {
                 mergeSort(&(moviesLL->head), argv[2], NULL);
-                printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
+                printMoviesAsCsv(moviesLL->head, numColumns, columnNames, outputFilePath);
             }else
             {
                 printf("ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n");
@@ -522,7 +584,7 @@ int sortCsv(char** argv, char* filePath, char* outputDir){
             if (counter == 1)   //sort only if the column name actually exists
             {
                 mergeSort(&(moviesLL->head), NULL, argv[2]);
-                printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
+                printMoviesAsCsv(moviesLL->head, numColumns, columnNames, outputFilePath);
             }else
             {
                 printf("ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n");
