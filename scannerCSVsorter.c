@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "simpleCSVsorter.h"
+#include <dirent.h>
+#include <sys/wait.h> 
 
 typedef enum { false, true } bool;
 
@@ -46,22 +48,6 @@ int initMovieLine(movieLine* movie){
 	return 0;
 }
 
-/*testing sorting - SUCCESS!
-void printArray(char *A[], int size)
-{
-    int i;
-    for (i=0; i < size; i++)
-//        printf("%d ", A[i]);
-        printf("%s, ", A[i]);
-    printf("\n");
-}
-*/
-
-
-/* arg: head of LL. number of columns, column headers
-* ret: 0 if completed
-* prints the movmies as a csv to stdout
-*/
 int printMoviesAsCsv(movieLine* head, int numColumns, char** columnNames){
 	int i;
 	for (i = 0; i < numColumns; ++i)
@@ -126,7 +112,6 @@ int hasNoFields(movieLine* movie){
 	} else{
 		return 1;
 	}
-
 }
 
 /* arg: column number, array of column headers, movie line pointer, string to add at that column
@@ -304,256 +289,291 @@ int addFieldToMovie(int columnNumber, char** columnNames, movieLine* movie, char
 	return 0;
 }
 
-int main(int argc, char *argv[]){
-    //check if there are correct # of argument inputs
-    if (argc == 3){
+int sortCsv(char** argv){
         //check if command is correct
-        if (strcmp(argv[1], "-c") == 0){
-            //check if column name is valid
-//            if (){        - loop here to go thru and check all types
-//
-//            }else{
-//
-//            }
+    if (strcmp(argv[1], "-c") == 0){
 
-            /*
-            //testing sorting with small inputs - int
-//            int arr[] = {100, 12, 11, 13, 5, 6, 7};
-            char *arr[] = {"James Cameron", "Gore Verbinski", "Sam Mendes", "Christopher Nolan", "Doug Walker", "Andrew Stanton", "Sam Raimi"};
-            int arr_size = sizeof(arr)/sizeof(arr[0]);
 
-            printf("Given array is \n");
-            printArray(arr, arr_size);
-
-//            numMergeSort(arr, 0, arr_size - 1);
-            strMergeSort(arr, 0, arr_size - 1);
-
-            printf("\nSorted array is \n");
-            printArray(arr, arr_size);
-            //
-            */
-
-            char columnsLine[2000];
-            char buffer;
-            int lineCounter = 0;
-            if(DEBUG) { printf("Reading in first line\n"); }
+        char columnsLine[2000];
+        char buffer;
+        int lineCounter = 0;
+        if(DEBUG) { printf("Reading in first line\n"); }
+        read(0, &buffer, 1);
+        while(buffer != '\n'){
+            if(DEBUG){printf("%c", buffer);}
+            columnsLine[lineCounter] = buffer;
+            lineCounter++;
             read(0, &buffer, 1);
-            while(buffer != '\n'){
-                if(DEBUG){printf("%c", buffer);}
-                columnsLine[lineCounter] = buffer;
-                lineCounter++;
-                read(0, &buffer, 1);
+        }
+        if(DEBUG){ printf("\n"); }
+        columnsLine[lineCounter] = '\0';
+        if(DEBUG){
+            if(columnsLine[lineCounter - 1] == '\n' || columnsLine[lineCounter] == '\n'){
+                printf("misplaced newline at the end of the columns string\n");
             }
-            if(DEBUG){ printf("\n"); }
-            columnsLine[lineCounter] = '\0';
-            if(DEBUG){
-                if(columnsLine[lineCounter - 1] == '\n' || columnsLine[lineCounter] == '\n'){
-                    printf("misplaced newline at the end of the columns string\n");
-                }
-            }
+        }
 
-            // now want to parse the first line so that we know the number of columns
-            // number of columns = # of commas + 1
-            int i;
-            int numColumns = 1;
-            for(i = 0; i < strlen(columnsLine); i++){
-                if(columnsLine[i] == ','){
-                    numColumns++;
-                }
+        // now want to parse the first line so that we know the number of columns
+        // number of columns = # of commas + 1
+        int i;
+        int numColumns = 1;
+        for(i = 0; i < strlen(columnsLine); i++){
+            if(columnsLine[i] == ','){
+                numColumns++;
             }
-            if(DEBUG) { printf("Number of columns is %d\n", numColumns);}
+        }
+        if(DEBUG) { printf("Number of columns is %d\n", numColumns);}
 
-            // want to add each column header to an array of strings
-            // array of strings of size numColumns, each string max size of 30, each index corresponds to that columns index
-            char** columnNames;
-            columnNames = malloc(numColumns * sizeof(char*));
+        // want to add each column header to an array of strings
+        // array of strings of size numColumns, each string max size of 30, each index corresponds to that columns index
+        char** columnNames;
+        columnNames = malloc(numColumns * sizeof(char*));
+        for(i = 0; i < numColumns; i++){
+            columnNames[i] = malloc(30 * sizeof(char));
+        }
+
+        int currColumnNum = 0;
+        int currStringIndex = 0;
+        for(i = 0; i < strlen(columnsLine); i++){
+            if(columnsLine[i] == ','){
+                columnNames[currColumnNum][currStringIndex] = '\0';
+                if(DEBUG){ printf("column name %s inserted into column names array\n", columnNames[currColumnNum]); }
+                currColumnNum++;
+                currStringIndex = 0;
+                continue;
+            }
+            columnNames[currColumnNum][currStringIndex] = columnsLine[i];
+            currStringIndex++;
+        }
+
+        columnNames[currColumnNum][currStringIndex - 1] = '\0';
+
+
+        if(DEBUG){
+            printf("Last columnName is: %s\n", columnNames[numColumns - 1]);
+            if(columnNames[numColumns - 1][strlen(columnNames[numColumns - 1])] == '\n'){
+                printf("misplaced newline in the last character of last string\n");
+            }
+        }
+        // print out column names for testing
+        if(DEBUG){
             for(i = 0; i < numColumns; i++){
-                columnNames[i] = malloc(30 * sizeof(char));
-            }
-
-            int currColumnNum = 0;
-            int currStringIndex = 0;
-            for(i = 0; i < strlen(columnsLine); i++){
-                if(columnsLine[i] == ','){
-                    columnNames[currColumnNum][currStringIndex] = '\0';
-                    if(DEBUG){ printf("column name %s inserted into column names array\n", columnNames[currColumnNum]); }
-                    currColumnNum++;
-                    currStringIndex = 0;
-                    continue;
-                }
-                columnNames[currColumnNum][currStringIndex] = columnsLine[i];
-                currStringIndex++;
-            }
-
-            columnNames[currColumnNum][currStringIndex - 1] = '\0';
-
-
-            if(DEBUG){
-                printf("Last columnName is: %s\n", columnNames[numColumns - 1]);
-                if(columnNames[numColumns - 1][strlen(columnNames[numColumns - 1])] == '\n'){
-                    printf("misplaced newline in the last character of last string\n");
+                printf("column: %s at number %d\n", columnNames[i], i);
+                if(columnNames[i][strlen(columnNames[i] - 1)] == '\n'){
+                        printf("misplaced newline in the last character of last string\n");
                 }
             }
-            // print out column names for testing
-            if(DEBUG){
-                for(i = 0; i < numColumns; i++){
-                    printf("column: %s at number %d\n", columnNames[i], i);
-                    if(columnNames[i][strlen(columnNames[i] - 1)] == '\n'){
-                            printf("misplaced newline in the last character of last string\n");
-                    }
-                }
-            }
+        }
 
 
-            // now want to read in a row and put appropriate data in fields for the row object
-            // to read in a row, we start at new line or EOF
+        // now want to read in a row and put appropriate data in fields for the row object
+        // to read in a row, we start at new line or EOF
 
-            //make a new struct, make previous struct point to it, populate it
+        //make a new struct, make previous struct point to it, populate it
 
 
-            char currCellText[100];
-            int currCellTextIndex = 0;
-            int cellNumber = 0;
-            if(DEBUG2){ printf("Line %d\n", __LINE__);}
-            movieLine* currMovie = malloc(sizeof(movieLine));
-            initMovieLine(currMovie);
-            movieLineLL* moviesLL = malloc(sizeof(movieLineLL));
-            moviesLL->head = currMovie;
-            moviesLL->rear = currMovie;
-            moviesLL->size = 1;
-            bool quotationMark = false;
-            char individualMovieLine[500];
-            int movieLineCharacterIndex = 0;
-            if(DEBUG2){ printf("Line %d\n", __LINE__);}
-            while(read(0, &buffer, 1) != 0){
-                if(buffer == '"'){
-                    quotationMark = !quotationMark;
-                    individualMovieLine[movieLineCharacterIndex] = buffer;
-                    movieLineCharacterIndex++;
-                    continue;
-                }
-                if (buffer == ',' && !quotationMark)
-                {
-                    individualMovieLine[movieLineCharacterIndex] = buffer;
-                    movieLineCharacterIndex++;
-                    // fill out the struct field based on this info
-                    currCellText[currCellTextIndex] = '\0';
-                    currCellTextIndex = 0;
-                    addFieldToMovie(cellNumber, columnNames, currMovie, currCellText);
-                    cellNumber++;
-                    currCellText[0] = '\0';
-                    continue;
-                }
-                if(buffer == '\n'){
-                    // complete the current movie and make the next one
-                    individualMovieLine[movieLineCharacterIndex] = '\0';
-                    movieLineCharacterIndex = 0;
-                    currCellText[currCellTextIndex - 1] = '\0';
-                    currCellTextIndex = 0;
-                    addFieldToMovie(cellNumber, columnNames, currMovie, currCellText);
-                    cellNumber = 0;
-                    currCellText[0] = '\0';
-                    if(DEBUG2){printf("%s\n", individualMovieLine);}
-
-                    movieLine* newMovie = malloc(sizeof(movieLine));
-                    initMovieLine(newMovie);
-                    addFieldToMovie(-1, columnNames, currMovie, individualMovieLine);
-                    //strcpy(currMovie->csvLine, individualMovieLine);
-                    moviesLL->rear = newMovie;
-                    currMovie->next = newMovie;
-                    currMovie = newMovie;
-                    continue;
-                }
-
-                currCellText[currCellTextIndex] = buffer;
-                currCellTextIndex++;
+        char currCellText[100];
+        int currCellTextIndex = 0;
+        int cellNumber = 0;
+        if(DEBUG2){ printf("Line %d\n", __LINE__);}
+        movieLine* currMovie = malloc(sizeof(movieLine));
+        initMovieLine(currMovie);
+        movieLineLL* moviesLL = malloc(sizeof(movieLineLL));
+        moviesLL->head = currMovie;
+        moviesLL->rear = currMovie;
+        moviesLL->size = 1;
+        bool quotationMark = false;
+        char individualMovieLine[500];
+        int movieLineCharacterIndex = 0;
+        if(DEBUG2){ printf("Line %d\n", __LINE__);}
+        while(read(0, &buffer, 1) != 0){
+            if(buffer == '"'){
+                quotationMark = !quotationMark;
                 individualMovieLine[movieLineCharacterIndex] = buffer;
                 movieLineCharacterIndex++;
+                continue;
+            }
+            if (buffer == ',' && !quotationMark)
+            {
+                individualMovieLine[movieLineCharacterIndex] = buffer;
+                movieLineCharacterIndex++;
+                // fill out the struct field based on this info
+                currCellText[currCellTextIndex] = '\0';
+                currCellTextIndex = 0;
+                addFieldToMovie(cellNumber, columnNames, currMovie, currCellText);
+                cellNumber++;
+                currCellText[0] = '\0';
+                continue;
+            }
+            if(buffer == '\n'){
+                // complete the current movie and make the next one
+                individualMovieLine[movieLineCharacterIndex] = '\0';
+                movieLineCharacterIndex = 0;
+                currCellText[currCellTextIndex - 1] = '\0';
+                currCellTextIndex = 0;
+                addFieldToMovie(cellNumber, columnNames, currMovie, currCellText);
+                cellNumber = 0;
+                currCellText[0] = '\0';
+                if(DEBUG2){printf("%s\n", individualMovieLine);}
 
+                movieLine* newMovie = malloc(sizeof(movieLine));
+                initMovieLine(newMovie);
+                addFieldToMovie(-1, columnNames, currMovie, individualMovieLine);
+                //strcpy(currMovie->csvLine, individualMovieLine);
+                moviesLL->rear = newMovie;
+                currMovie->next = newMovie;
+                currMovie = newMovie;
+                continue;
             }
 
+            currCellText[currCellTextIndex] = buffer;
+            currCellTextIndex++;
+            individualMovieLine[movieLineCharacterIndex] = buffer;
+            movieLineCharacterIndex++;
 
-            movieLine* currIter = moviesLL->head;
-            while(currIter->next != NULL){
-            	if(hasNoFields(currIter->next) == 0){
-            		moviesLL->rear = currIter;
-            		free(currIter->next);
-            		currIter->next = NULL;
-            		break;
-            	}
-            	currIter = currIter->next;
+        }
+
+
+        movieLine* currIter = moviesLL->head;
+        while(currIter->next != NULL){
+        	if(hasNoFields(currIter->next) == 0){
+        		moviesLL->rear = currIter;
+        		free(currIter->next);
+        		currIter->next = NULL;
+        		break;
+        	}
+        	currIter = currIter->next;
+        }
+
+        // deal with the last character
+        //currCellText[currCellTextIndex] = '\0';
+        //addFieldToMovie(cellNumber, columnNames, currMovie, currCellText);
+        //strcpy(currMovie->csvLine, individualMovieLine);
+
+        //Before sorting!
+        //printf("\n\n\n\n\nBefore Sorting!\n\n\n\n\n");
+        //printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
+
+        int counter = 0;
+
+        if ((strcmp(argv[2], "color") == 0) || (strcmp(argv[2], "director_name") == 0) || (strcmp(argv[2], "actor_2_name") == 0) || (strcmp(argv[2], "genres") == 0) || (strcmp(argv[2], "actor_1_name") == 0) || (strcmp(argv[2], "movie_title") == 0) || (strcmp(argv[2], "actor_3_name") == 0) || (strcmp(argv[2], "plot_keywords") == 0) || (strcmp(argv[2], "movie_imdb_link") == 0) || (strcmp(argv[2], "language") == 0) || (strcmp(argv[2], "country") == 0) || (strcmp(argv[2], "content_rating") == 0))
+        {
+            //all char * cases
+            //printf("COLUMN NAME type is String!\n\n");
+            for (i = 0; i < numColumns; i++)
+            {
+                //printf("%s\n", columnNames[i]);
+                if (strcmp(argv[2], columnNames[i]) == 0)   //case when there are only subsets of column names
+                {
+                    counter = 1;
+                    break;
+                }
             }
 
-            // deal with the last character
-            //currCellText[currCellTextIndex] = '\0';
-            //addFieldToMovie(cellNumber, columnNames, currMovie, currCellText);
-            //strcpy(currMovie->csvLine, individualMovieLine);
-
-            //Before sorting!
-            //printf("\n\n\n\n\nBefore Sorting!\n\n\n\n\n");
-            //printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
-
-            int counter = 0;
-
-            if ((strcmp(argv[2], "color") == 0) || (strcmp(argv[2], "director_name") == 0) || (strcmp(argv[2], "actor_2_name") == 0) || (strcmp(argv[2], "genres") == 0) || (strcmp(argv[2], "actor_1_name") == 0) || (strcmp(argv[2], "movie_title") == 0) || (strcmp(argv[2], "actor_3_name") == 0) || (strcmp(argv[2], "plot_keywords") == 0) || (strcmp(argv[2], "movie_imdb_link") == 0) || (strcmp(argv[2], "language") == 0) || (strcmp(argv[2], "country") == 0) || (strcmp(argv[2], "content_rating") == 0))
+            if (counter == 1)   //sort only if the column name actually exists
             {
-                //all char * cases
-                //printf("COLUMN NAME type is String!\n\n");
-                for (i = 0; i < numColumns; i++)
-                {
-                    //printf("%s\n", columnNames[i]);
-                    if (strcmp(argv[2], columnNames[i]) == 0)   //case when there are only subsets of column names
-                    {
-                        counter = 1;
-                        break;
-                    }
-                }
-
-                if (counter == 1)   //sort only if the column name actually exists
-                {
-                    mergeSort(&(moviesLL->head), argv[2], NULL);
-                    printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
-                }else
-                {
-                    printf("ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n");
-                }
-
-
-            }else if ((strcmp(argv[2], "num_critic_for_reviews") == 0) || (strcmp(argv[2], "duration") == 0) || (strcmp(argv[2], "director_facebook_likes") == 0) || (strcmp(argv[2], "actor_3_facebook_likes") == 0) || (strcmp(argv[2], "actor_1_facebook_likes") == 0) || (strcmp(argv[2], "gross") == 0) || (strcmp(argv[2], "num_voted_users") == 0) || (strcmp(argv[2], "cast_total_facebook_likes") == 0) || (strcmp(argv[2], "facenumber_in_poster") == 0) || (strcmp(argv[2], "num_user_for_reviews") == 0) || (strcmp(argv[2], "budget") == 0) || (strcmp(argv[2], "title_year") == 0) || (strcmp(argv[2], "actor_2_facebook_likes") == 0) || (strcmp(argv[2], "imdb_score") == 0) || (strcmp(argv[2], "aspect_ratio") == 0) || (strcmp(argv[2], "movie_facebook_likes") == 0))
-            {
-                //all int + double cases
-                //printf("COLUMN NAME type is int/double!\n\n");
-                for (i = 0; i < numColumns; i++)
-                {
-                    //printf("%s\n", columnNames[i]);
-                    if (strcmp(argv[2], columnNames[i]) == 0)   //case when there are only subsets of column names
-                    {
-                        counter = 1;
-                        break;
-                    }
-                }
-
-                if (counter == 1)   //sort only if the column name actually exists
-                {
-                    mergeSort(&(moviesLL->head), NULL, argv[2]);
-                    printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
-                }else
-                {
-                    printf("ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n");
-                }
+                mergeSort(&(moviesLL->head), argv[2], NULL);
+                printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
             }else
             {
-                printf("ERROR: INVALID COLUMN NAME!\n\n");
+                printf("ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n");
             }
 
-            //After sorting!
-            //printf("\n\n\n\n\nAfter Sorting!\n\n\n\n\n");
 
-            free(columnNames);
-            //printf("SUCCESS!\n\n");
-        }else{
-            printf("Usage: simpleCSVsorter -c <column name>\n\n");
+        }else if ((strcmp(argv[2], "num_critic_for_reviews") == 0) || (strcmp(argv[2], "duration") == 0) || (strcmp(argv[2], "director_facebook_likes") == 0) || (strcmp(argv[2], "actor_3_facebook_likes") == 0) || (strcmp(argv[2], "actor_1_facebook_likes") == 0) || (strcmp(argv[2], "gross") == 0) || (strcmp(argv[2], "num_voted_users") == 0) || (strcmp(argv[2], "cast_total_facebook_likes") == 0) || (strcmp(argv[2], "facenumber_in_poster") == 0) || (strcmp(argv[2], "num_user_for_reviews") == 0) || (strcmp(argv[2], "budget") == 0) || (strcmp(argv[2], "title_year") == 0) || (strcmp(argv[2], "actor_2_facebook_likes") == 0) || (strcmp(argv[2], "imdb_score") == 0) || (strcmp(argv[2], "aspect_ratio") == 0) || (strcmp(argv[2], "movie_facebook_likes") == 0))
+        {
+            //all int + double cases
+            //printf("COLUMN NAME type is int/double!\n\n");
+            for (i = 0; i < numColumns; i++)
+            {
+
+                if (strcmp(argv[2], columnNames[i]) == 0)   //case when there are only subsets of column names
+                {
+                    counter = 1;
+                    break;
+                }
+            }
+
+            if (counter == 1)   //sort only if the column name actually exists
+            {
+                mergeSort(&(moviesLL->head), NULL, argv[2]);
+                printMoviesAsCsv(moviesLL->head, numColumns, columnNames);
+            }else
+            {
+                printf("ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n");
+            }
+        }else
+        {
+            printf("ERROR: INVALID COLUMN NAME!\n\n");
         }
+
+        //After sorting!
+        //printf("\n\n\n\n\nAfter Sorting!\n\n\n\n\n");
+
+        free(columnNames);
+        //printf("SUCCESS!\n\n");
+    }else{
+        printf("Usage: simpleCSVsorter -c <column name>\n\n");
+    }
+
+    return 0;
+}
+
+int main(int argc, char *argv[]){
+    //check if there are correct # of argument inputs
+    if (argc >= 3){
+
+    	// testing if we can see all directory and file names as well as subdirectories 
+    	DIR *dir;
+  		struct dirent *entry;
+  		int pid;
+  		int numProcesses = 1;
+
+
+
+  		// go through files first
+  		if ((dir = opendir("./")) == NULL)
+    		perror("opendir() error");
+  		else {
+    		puts("Files:");
+    		while ((entry = readdir(dir)) != NULL){
+    			// entry is a file
+    			if(entry->d_type == DT_REG){
+    				int stat;
+    				pid = fork();
+    				if(pid == 0){
+    					printf("%s\n", entry->d_name);
+    					exit(1);
+    				} else{
+    					pid_t cpid =  waitpid(pid, &stat, 0);
+    					printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
+    					numProcesses += WEXITSTATUS(stat);
+    					continue;
+    				}
+      			}
+    		}
+    		closedir(dir);
+    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
+  		}
+
+
+  		// go through directories
+  		if ((dir = opendir("./")) == NULL)
+    		perror("opendir() error");
+  		else {
+    		puts("\nDirectories:");
+    		while ((entry = readdir(dir)) != NULL){
+    			if(entry->d_type == DT_DIR){
+      				printf("  %s\n", entry->d_name);
+      			}
+    		}
+    		closedir(dir);
+    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
+  		}
+
+  		printf("Total Number of processes %d\n", numProcesses);
+
+    	//sortCsv(argv);
     }else {
 //        fprintf(stderr, "\nERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS\n");   - same error statement but with stderr
         printf("ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n\n");
