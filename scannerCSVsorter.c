@@ -289,9 +289,34 @@ int addFieldToMovie(int columnNumber, char** columnNames, movieLine* movie, char
 	return 0;
 }
 
-int sortCsv(char** argv){
+// check if given file path is to a csv
+// return 0 if true, not 0 otherwise
+int isCSV(char* filePath){
+	if(strlen(filePath) < 4){
+		return 1;
+	}
+	char* csvPortion = &filePath[strlen(filePath) - 4];
+	return strcmp(csvPortion, ".csv");
+}
+
+// sort CSV as per the specifications of project 0
+// args: argv from the program input, filepath to file for sorting
+// ret: 0 if success, 1 if something bad happened
+int sortCsv(char** argv, char* filePath, char* outputDir){
         //check if command is correct
     if (strcmp(argv[1], "-c") == 0){
+
+    	//Check if file is a csv
+    	if(isCSV(filePath) != 0){
+    		printf("%s is NOT a csv\n", filePath);
+    		return 1;
+    	}
+
+    	FILE* file = fopen(filePath, "r");
+    	int fd = fileno(file);
+
+    	printf("File Descriptor: %d\n", fd);
+    	return 0;
 
 
         char columnsLine[2000];
@@ -511,14 +536,18 @@ int sortCsv(char** argv){
         //printf("\n\n\n\n\nAfter Sorting!\n\n\n\n\n");
 
         free(columnNames);
+        fclose(file);
         //printf("SUCCESS!\n\n");
     }else{
         printf("Usage: simpleCSVsorter -c <column name>\n\n");
     }
 
+
     return 0;
 }
 
+// arg: string 1 = base directory, str2 = directory to append to end
+// ret: str1 + str2 + '/'
 char* directoryStringAppend(char* str1, char* str2){
 	char* ret;
 	if( (ret = malloc((strlen(str1) + strlen(str2) + 2) * sizeof(char))) ) {
@@ -533,8 +562,29 @@ char* directoryStringAppend(char* str1, char* str2){
 	return ret;
 }
 
+// arg: string 1 = base directory, str2 = file to append to end
+// ret: str1 + str2
+char* fileStringAppend(char* directory, char* fileName){
+	char* ret;
+	if( (ret = malloc((strlen(directory) + strlen(fileName) + 1) * sizeof(char))) ) {
+		strcat(ret, directory);
+		strcat(ret, fileName);
+		ret[strlen(directory) + strlen(fileName)] = '\0';
+	}
+	else{
+		ret = "failure";
+	}
+	return ret;
+}
+
+// given directory in path, get its base directory
+// arg: directory
+// ret: base directory string
 char* getBaseDirectory(char* directory){
 	int i;
+	if(strlen(directory) <= 2){
+		return directory;
+	}
 	for(i = strlen(directory) - 2; i > -1; i--){
 		if(directory[i] == '/'){
 			directory[i + 1] = '\0';
@@ -544,11 +594,15 @@ char* getBaseDirectory(char* directory){
 	return directory;
 }
 
+// function prototype for subLevelDriver
+int subLevelDriver(char* currDir, char* outputDir, int pid, int numProcesses, char** argv);
 
-int subLevelDriver(char* currDir, int pid, int numProcesses);
 
-
-int parseFiles(char* currDir, int pid){
+// function to go through all the files in currDir and call the sort on them
+// arg: curr directory to look through, output directory to put sorted files in, pid (should be 0 on input?), argv from 
+// 	program input
+// ret: number of processes that came from this
+int parseFiles(char* currDir, char* outputDir, int pid, char** argv){
 	DIR *dir;
   	struct dirent *entry;
   	int numProcesses = 0;
@@ -564,7 +618,10 @@ int parseFiles(char* currDir, int pid){
 				int stat;
 				pid = fork();
 				if(pid == 0){
-					printf("%s\n", entry->d_name);
+					char* filePath = fileStringAppend(currDir, entry->d_name);
+					printf("%s\n", filePath);
+					sortCsv(argv, filePath, outputDir);
+					free(filePath);
 					exit(1);
 				} else{
 					pid_t cpid =  waitpid(pid, &stat, 0);
@@ -579,7 +636,12 @@ int parseFiles(char* currDir, int pid){
 	return numProcesses;
 }
 
-int parseDirectories(char* currDir, int pid){
+
+// function to go through all the directories in currDir and call the subLevelDriver on them
+// arg: curr directory to look through, output directory to put sorted files in, pid (should be 0 on input?), argv from 
+// 	program input
+// ret: number of processes that came from this
+int parseDirectories(char* currDir, char* outputDir, int pid, char** argv){
 	DIR *dir;
   	struct dirent *entry;
   	int numProcesses = 0;
@@ -596,21 +658,15 @@ int parseDirectories(char* currDir, int pid){
 		while ((entry = readdir(dir)) != NULL){
 			if(entry->d_type == DT_DIR){
 				if(!(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".git") == 0)){
-	  				/*
-	  				currDir = directoryStringAppend(currDir, entry->d_name);
-	  				printf("currDir = %s\n", currDir);
-	  				currDir = getBaseDirectory(currDir);
-	  				*/
 
 
 	  				int stat;
 					pid = fork();
 					if(pid == 0){
-						/*if(numProcesses == 0){
-							numProcesses++;
-						}*/
-						numProcesses = subLevelDriver(directoryStringAppend(currDir, entry->d_name), pid, 1);
-						printf("%s\n", entry->d_name);
+						char* subDir = directoryStringAppend(currDir, entry->d_name);
+						numProcesses = subLevelDriver(subDir, outputDir, pid, 1, argv);
+						printf("%s\n", subDir);
+						free(subDir);
 						exit(numProcesses);
 					} else {
 						pid_t cpid =  waitpid(pid, &stat, 0);
@@ -629,9 +685,14 @@ int parseDirectories(char* currDir, int pid){
 	return numProcesses;
 }
 
-int subLevelDriver(char* currDir, int pid, int numProcesses){
-	numProcesses += parseFiles(currDir, pid);
-  	numProcesses += parseDirectories(currDir, pid);
+
+// calls parse files and pares directories for a particular sublevel of directories
+// this is trypically called by each sub directory as well as the parent function
+// arg: current directory, output directory, pid, number of processes total, argv from program input
+// ret: the number of processes
+int subLevelDriver(char* currDir, char* outputDir, int pid, int numProcesses, char** argv){
+	numProcesses += parseFiles(currDir, outputDir, pid, argv);
+  	numProcesses += parseDirectories(currDir, outputDir, pid, argv);
 	return numProcesses;	 
 }
 
@@ -646,100 +707,27 @@ int main(int argc, char *argv[]){
   		int pid = 0;
   		int numProcesses = 1;
   		char* currDir = "./";
+  		char* outputDir = "./";
 
-
-  		numProcesses = subLevelDriver(currDir, pid, numProcesses);
-		
-		/*
-  		// go through files first
-  		if ((dir = opendir(currDir)) == NULL)
-    		perror("opendir() error");
-  		else {
-    		puts("Files:");
-    		while ((entry = readdir(dir)) != NULL){
-    			// entry is a file
-    			if(entry->d_type == DT_REG){
-    				int stat;
-    				pid = fork();
-    				if(pid == 0){
-    					printf("%s\n", entry->d_name);
-    					exit(1);
-    				} else{
-    					pid_t cpid =  waitpid(pid, &stat, 0);
-    					printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
-    					numProcesses += WEXITSTATUS(stat);
-    					continue;
-    				}
-      			}
-    		}
-    		closedir(dir);
-    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
+  		if(argc == 4){
+  			printf("ERROR: NO DIRECTORY SPECIFIED OR TAGS NOT CORRECTLY USED, WILL USE BASE DIRECTORY");
+  		}
+  		if(argc > 4){
+	  		if(strcmp(argv[3], "-d") == 0)
+	  		{
+	  			currDir = directoryStringAppend(currDir, argv[4]);
+	  		}
+	  		if (strcmp(argv[3], "-o") == 0)
+	  		{
+	  			outputDir = directoryStringAppend(currDir, argv[4]);
+	  		}
+	  		if(argc > 6){
+	  			outputDir = directoryStringAppend(currDir, argv[5]);
+	  		}
   		}
 
-
-  		// go through directories
-  		if ((dir = opendir(currDir)) == NULL)
-    		perror("opendir() error");
-  		else {
-    		puts("\nDirectories:");
-    		if((entry = readdir(dir)) == NULL){
-    			exit(1);
-			}
-    		while ((entry = readdir(dir)) != NULL){
-    			if(entry->d_type == DT_DIR){
-    				if(!(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".git") == 0)){
-	      				
-	      				currDir = directoryStringAppend(currDir, entry->d_name);
-	      				printf("currDir = %s\n", currDir);
-	      				currDir = getBaseDirectory(currDir);
-	      				/*
-	      				int stat;
-	    				pid = fork();
-	    				if(pid == 0){
-    						currDir = directoryStringAppend(currDir, entry->d_name);
-    						printf("%s\n", entry->d_name);
-    						break;
-	    				} else {
-	    					pid_t cpid =  waitpid(pid, &stat, 0);
-	    					printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
-	    					numProcesses += WEXITSTATUS(stat);
-	    					currDir = getBaseDirectory(currDir);
-	    					continue;
-	    				}
-    				}
-
-      			}
-    		}
+  		numProcesses = subLevelDriver(currDir, outputDir, pid, numProcesses, argv);
 		
-    		closedir(dir);
-
-	
-    		// case in which there are no subdirectories and no files, pid will still be zero and we want to get out, 
-    		// dont want to loop infinitely. So we have to make a counter to stop it from happening more than once
-    		// count if there are only two subdirectories
-    		int numSubdirectories = 0;
-    		if ((dir = opendir(currDir)) == NULL){
-    			perror("opendir() error");
-    		}
-    		while ((entry = readdir(dir)) != NULL){
-    			// entry is a file
-    			numSubdirectories++;
-    		}
-    		closedir(dir);
-    		
-    		if(numSubdirectories <= 2){
-    			exit(1);
-    		}
-    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
-  		
-    		
-	    	
-
-	    	printf("most recent child PID = %d\n", pid);
-	    	
-  		}
-
-		*/
 
   		printf("Total Number of processes %d\n", numProcesses);
 
