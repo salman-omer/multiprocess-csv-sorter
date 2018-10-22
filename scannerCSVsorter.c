@@ -519,6 +519,31 @@ int sortCsv(char** argv){
     return 0;
 }
 
+char* directoryStringAppend(char* str1, char* str2){
+	char* ret;
+	if( (ret = malloc((strlen(str1) + strlen(str2) + 2) * sizeof(char))) ) {
+		strcat(ret, str1);
+		strcat(ret, str2);
+		ret[strlen(str1) + strlen(str2)] = '/';
+		ret[strlen(str1) + strlen(str2) + 1] = '\0';
+	}
+	else{
+		ret = "failure";
+	}
+	return ret;
+}
+
+char* getBaseDirectory(char* directory){
+	int i;
+	for(i = strlen(directory) - 2; i > -1; i--){
+		if(directory[i] == '/'){
+			directory[i + 1] = '\0';
+			break;
+		}
+	}
+	return directory;
+}
+
 int main(int argc, char *argv[]){
     //check if there are correct # of argument inputs
     if (argc >= 3){
@@ -526,49 +551,98 @@ int main(int argc, char *argv[]){
     	// testing if we can see all directory and file names as well as subdirectories 
     	DIR *dir;
   		struct dirent *entry;
-  		int pid;
+  		int pid = 0;
   		int numProcesses = 1;
+  		char* currDir = "./";
 
 
 
-  		// go through files first
-  		if ((dir = opendir("./")) == NULL)
-    		perror("opendir() error");
-  		else {
-    		puts("Files:");
-    		while ((entry = readdir(dir)) != NULL){
-    			// entry is a file
-    			if(entry->d_type == DT_REG){
-    				int stat;
-    				pid = fork();
-    				if(pid == 0){
-    					printf("%s\n", entry->d_name);
-    					exit(1);
-    				} else{
-    					pid_t cpid =  waitpid(pid, &stat, 0);
-    					printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
-    					numProcesses += WEXITSTATUS(stat);
-    					continue;
-    				}
-      			}
-    		}
-    		closedir(dir);
-    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
-  		}
+  		while(pid == 0){
+	  		// go through files first
+	  		if ((dir = opendir(currDir)) == NULL)
+	    		perror("opendir() error");
+	  		else {
+	    		puts("Files:");
+	    		while ((entry = readdir(dir)) != NULL){
+	    			// entry is a file
+	    			if(entry->d_type == DT_REG){
+	    				int stat;
+	    				pid = fork();
+	    				if(pid == 0){
+	    					printf("%s\n", entry->d_name);
+	    					exit(1);
+	    				} else{
+	    					pid_t cpid =  waitpid(pid, &stat, 0);
+	    					printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
+	    					numProcesses += WEXITSTATUS(stat);
+	    					continue;
+	    				}
+	      			}
+	    		}
+	    		closedir(dir);
+	    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
+	  		}
 
 
-  		// go through directories
-  		if ((dir = opendir("./")) == NULL)
-    		perror("opendir() error");
-  		else {
-    		puts("\nDirectories:");
-    		while ((entry = readdir(dir)) != NULL){
-    			if(entry->d_type == DT_DIR){
-      				printf("  %s\n", entry->d_name);
-      			}
-    		}
-    		closedir(dir);
-    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
+	  		// go through directories
+	  		if ((dir = opendir(currDir)) == NULL)
+	    		perror("opendir() error");
+	  		else {
+	    		puts("\nDirectories:");
+	    		if((entry = readdir(dir)) == NULL){
+	    			exit(1);
+				}
+	    		while ((entry = readdir(dir)) != NULL){
+	    			if(entry->d_type == DT_DIR){
+	    				if(!(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || strcmp(entry->d_name, ".git") == 0)){
+		      				/*
+		      				currDir = directoryStringAppend(currDir, entry->d_name);
+		      				printf("currDir = %s\n", currDir);
+		      				currDir = getBaseDirectory(currDir);
+		      				*/
+		      				int stat;
+		    				pid = fork();
+		    				if(pid == 0){
+	    						currDir = directoryStringAppend(currDir, entry->d_name);
+	    						printf("%s\n", entry->d_name);
+	    						break;
+		    				} else {
+		    					pid_t cpid =  waitpid(pid, &stat, 0);
+		    					printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
+		    					numProcesses += WEXITSTATUS(stat);
+		    					currDir = getBaseDirectory(currDir);
+		    					continue;
+		    				}
+	    				}
+
+	      			}
+	    		}
+
+	    		closedir(dir);
+
+	    		// case in which there are no subdirectories and no files, pid will still be zero and we want to get out, 
+	    		// dont want to loop infinitely. So we have to make a counter to stop it from happening more than once
+	    		// count if there are only two subdirectories
+	    		int numSubdirectories = 0;
+	    		if ((dir = opendir(currDir)) == NULL){
+	    			perror("opendir() error");
+	    		}
+	    		while ((entry = readdir(dir)) != NULL){
+	    			// entry is a file
+	    			numSubdirectories++;
+	    		}
+	    		closedir(dir);
+	    		
+	    		if(numSubdirectories <= 2){
+	    			exit(1);
+	    		}
+	    		//printf("DTREG %d  DTDIR %d\n", DT_REG, DT_fcDIR);
+	  		
+	    		
+	    	}
+
+	    	printf("most recent child PID = %d\n", pid);
+	    	
   		}
 
   		printf("Total Number of processes %d\n", numProcesses);
