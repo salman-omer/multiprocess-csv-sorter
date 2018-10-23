@@ -773,39 +773,38 @@ int main(int argc, char *argv[]){
   		//struct dirent *entry;
   		int pid = 0;
   		int numProcesses = 1;
-  		//char* columnToSortOn
+  		char* columnToSortOn
   		char* currDir = "./";
   		char* outputDir = "./";
 
-  		/*if(argc % 2 == 0){
+  		if(argc % 2 == 0){
   			printf("FATAL ERROR: INCORRECT NUMBER OF INPUTS\n");
+  			return 1;
   		}
 
 
   		int i;
   		for(i = 1; i < argc; i++){
+  			if(argv[i+1] == '-'){
+  				printf("FATAL ERROR: ARGUMENT NOT SPECIFIED FOR TAG\n");
+  				return 1;
+  			}
+  			if(strcmp(argv[i], "-c")){
+  				columnToSortOn = argv[i+1];
+  			}
+  			else if(strcmp(argv[i], "-d")){
+  				currDir = directoryStringAppend(currDir, argv[i+1]);
+  			}
+  			else if(strcmp(argv[i], "-o")){
+  				outputDir = directoryStringAppend(currDir, argv[i+1]);
+  			} 
+  			else {
+  				printf("FATAL ERROR: ARGUMENTS WITHOUT TAG\n");
+  				return 1;
+  			}
 
-  		}*/
-
-
-  		if(argc == 4){
-  			printf("ERROR: NO DIRECTORY SPECIFIED OR TAGS NOT CORRECTLY USED, WILL USE BASE DIRECTORY");
   		}
 
-
-  		if(argc > 4){
-	  		if(strcmp(argv[3], "-d") == 0)
-	  		{
-	  			currDir = directoryStringAppend(currDir, argv[4]);
-	  		}
-	  		if (strcmp(argv[3], "-o") == 0)
-	  		{
-	  			outputDir = directoryStringAppend(currDir, argv[4]);
-	  		}
-	  		if(argc > 6){
-	  			outputDir = directoryStringAppend(currDir, argv[5]);
-	  		}
-  		}
 
 
   		printf("Initial PID: %d\n", getpid());
