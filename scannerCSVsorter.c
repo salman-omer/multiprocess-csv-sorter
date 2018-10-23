@@ -2,9 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "simpleCSVsorter.h"
+#include "scannerCSVsorter.h"
 #include <dirent.h>
-#include <sys/wait.h> 
+#include <sys/wait.h>
 
 typedef enum { false, true } bool;
 
@@ -322,7 +322,7 @@ char* getOutputCSVFilePath(char* originalFilePath, char* outputDir, char* column
 				filePathCopy = &filePathCopy[i + 1];
 			}
 		}
-		
+
 		//printf("FILE WITHOUT CSV AND PATH %s\n", filePathCopy);
 
 		char* temp = fileStringAppend(outputDir, filePathCopy);
@@ -661,7 +661,7 @@ int subLevelDriver(char* currDir, char* outputDir, int pid, int numProcesses, ch
 
 
 // function to go through all the files in currDir and call the sort on them
-// arg: curr directory to look through, output directory to put sorted files in, pid (should be 0 on input?), argv from 
+// arg: curr directory to look through, output directory to put sorted files in, pid (should be 0 on input?), argv from
 // 	program input
 // ret: number of processes that came from this
 int parseFiles(char* currDir, char* outputDir, int pid, char** argv){
@@ -700,7 +700,7 @@ int parseFiles(char* currDir, char* outputDir, int pid, char** argv){
 
 
 // function to go through all the directories in currDir and call the subLevelDriver on them
-// arg: curr directory to look through, output directory to put sorted files in, pid (should be 0 on input?), argv from 
+// arg: curr directory to look through, output directory to put sorted files in, pid (should be 0 on input?), argv from
 // 	program input
 // ret: number of processes that came from this
 int parseDirectories(char* currDir, char* outputDir, int pid, char** argv){
@@ -755,7 +755,7 @@ int parseDirectories(char* currDir, char* outputDir, int pid, char** argv){
 int subLevelDriver(char* currDir, char* outputDir, int pid, int numProcesses, char** argv){
 	numProcesses += parseFiles(currDir, outputDir, pid, argv);
   	numProcesses += parseDirectories(currDir, outputDir, pid, argv);
-	return numProcesses;	 
+	return numProcesses;
 }
 
 
@@ -763,7 +763,7 @@ int main(int argc, char *argv[]){
     //check if there are correct # of argument inputs
     if (argc >= 3){
 
-    	// testing if we can see all directory and file names as well as subdirectories 
+    	// testing if we can see all directory and file names as well as subdirectories
     	//DIR *dir;
   		//struct dirent *entry;
   		int pid = 0;
@@ -789,7 +789,7 @@ int main(int argc, char *argv[]){
   		}
 
   		numProcesses = subLevelDriver(currDir, outputDir, pid, numProcesses, argv);
-		
+
 
   		printf("Total Number of processes %d\n", numProcesses);
 
