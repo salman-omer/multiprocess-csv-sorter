@@ -8,7 +8,7 @@
 
 typedef enum { false, true } bool;
 
-const int DEBUG = 1;
+const int DEBUG = 0;
 const int DEBUG2 = 0;
 
 // arg: pointer to movieLine
@@ -365,11 +365,11 @@ int sortCsv(char** argv, char* filePath, char* outputDir){
     	char* outputFilePath;
     	//Check if file is a csv
     	if(isCSV(filePath) != 0){
-    		printf("%s is NOT a csv\n", filePath);
+    		if(DEBUG){ printf("%s is NOT a csv\n", filePath); }
     		return 1;
     	} else {
     		outputFilePath = getOutputCSVFilePath(filePath, outputDir, argv[2]);
-    		printf("%s IS a csv\n", filePath);
+    		if(DEBUG){ printf("%s IS a csv\n", filePath); }
     	}
 
 
@@ -377,7 +377,7 @@ int sortCsv(char** argv, char* filePath, char* outputDir){
     	FILE* file = fopen(filePath, "r");
     	int fd = fileno(file);
 
-    	printf("File Descriptor: %d\n", fd);
+    	if(DEBUG){ printf("File Descriptor: %d\n", fd); }
     	//return 0;
 
 
@@ -673,21 +673,23 @@ int parseFiles(char* currDir, char* outputDir, int pid, char** argv){
     		perror("opendir() error");
 	}
 	else {
-		puts("Files:");
+		if(DEBUG){ puts("Files:"); } 
 		while ((entry = readdir(dir)) != NULL){
 			// entry is a file
 			if(entry->d_type == DT_REG){
 				int stat;
+				fflush(stdout);
 				pid = fork();
 				if(pid == 0){
 					char* filePath = fileStringAppend(currDir, entry->d_name);
-					printf("%s\n", filePath);
+					if(DEBUG){ printf("%s\n", filePath); } 
 					sortCsv(argv, filePath, outputDir);
 					free(filePath);
 					exit(1);
 				} else{
 					pid_t cpid =  waitpid(pid, &stat, 0);
-					printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
+					printf("%d,", pid);
+					if(DEBUG){ printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat)); }
 					numProcesses += WEXITSTATUS(stat);
 					continue;
 				}
@@ -713,7 +715,7 @@ int parseDirectories(char* currDir, char* outputDir, int pid, char** argv){
 		perror("opendir() error");
 	}
 	else {
-		puts("\nDirectories:");
+		if(DEBUG){ puts("\nDirectories:"); }
 		if((entry = readdir(dir)) == NULL){
 			exit(1);
 		}
@@ -723,16 +725,18 @@ int parseDirectories(char* currDir, char* outputDir, int pid, char** argv){
 
 
 	  				int stat;
+	  				fflush(stdout);
 					pid = fork();
 					if(pid == 0){
 						char* subDir = directoryStringAppend(currDir, entry->d_name);
 						numProcesses = subLevelDriver(subDir, outputDir, pid, 1, argv);
-						printf("%s\n", subDir);
+						if(DEBUG){ printf("%s\n", subDir); } 
 						free(subDir);
 						exit(numProcesses);
 					} else {
 						pid_t cpid =  waitpid(pid, &stat, 0);
-						printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat));
+						printf("%d,", pid);
+						if(DEBUG){ printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat)); } 
 						numProcesses += WEXITSTATUS(stat);
 						continue;
 					}
@@ -761,6 +765,7 @@ int subLevelDriver(char* currDir, char* outputDir, int pid, int numProcesses, ch
 
 int main(int argc, char *argv[]){
     //check if there are correct # of argument inputs
+
     if (argc >= 3){
 
     	// testing if we can see all directory and file names as well as subdirectories 
@@ -768,12 +773,26 @@ int main(int argc, char *argv[]){
   		//struct dirent *entry;
   		int pid = 0;
   		int numProcesses = 1;
+  		//char* columnToSortOn
   		char* currDir = "./";
   		char* outputDir = "./";
+
+  		/*if(argc % 2 == 0){
+  			printf("FATAL ERROR: INCORRECT NUMBER OF INPUTS\n");
+  		}
+
+
+  		int i;
+  		for(i = 1; i < argc; i++){
+
+  		}*/
+
 
   		if(argc == 4){
   			printf("ERROR: NO DIRECTORY SPECIFIED OR TAGS NOT CORRECTLY USED, WILL USE BASE DIRECTORY");
   		}
+
+
   		if(argc > 4){
 	  		if(strcmp(argv[3], "-d") == 0)
 	  		{
@@ -788,10 +807,14 @@ int main(int argc, char *argv[]){
 	  		}
   		}
 
+
+  		printf("Initial PID: %d\n", getpid());
+  		printf("PIDS of all child processes: ");
+  		fflush(stdout);
   		numProcesses = subLevelDriver(currDir, outputDir, pid, numProcesses, argv);
 		
+  		printf("\b \nTotal number of processes: %d\n", numProcesses);
 
-  		printf("Total Number of processes %d\n", numProcesses);
 
     	//sortCsv(argv);
     }else {
