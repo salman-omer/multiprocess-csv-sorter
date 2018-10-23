@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "simpleCSVsorter.h"
+#include "scannerCSVsorter.h"
 
 //this function removes the leading and trailing spaces of string type inputs
 char *trim(char *str)
