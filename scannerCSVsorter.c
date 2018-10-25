@@ -365,8 +365,8 @@ int sortCsv(char* columnToSortOn, char* filePath, char* outputDir){
 	char* outputFilePath;
 
 	//Check if file is already sorted
-	if(strstr(filePath, "-sorted-") != NULL){	
-		return 1;	
+	if(strstr(filePath, "-sorted-") != NULL){
+		return 1;
 	}
 
 	//Check if file is a csv
@@ -677,7 +677,7 @@ int parseFiles(char* currDir, char* outputDir, int pid, char* columnToSortOn){
     		perror("opendir() error");
 	}
 	else {
-		if(DEBUG){ puts("Files:"); } 
+		if(DEBUG){ puts("Files:"); }
 		while ((entry = readdir(dir)) != NULL){
 			// entry is a file
 			if(entry->d_type == DT_REG){
@@ -686,7 +686,7 @@ int parseFiles(char* currDir, char* outputDir, int pid, char* columnToSortOn){
 				pid = fork();
 				if(pid == 0){
 					char* filePath = fileStringAppend(currDir, entry->d_name);
-					if(DEBUG){ printf("%s\n", filePath); } 
+					if(DEBUG){ printf("%s\n", filePath); }
 					sortCsv(columnToSortOn, filePath, outputDir);
 					free(filePath);
 					exit(1);
@@ -734,13 +734,13 @@ int parseDirectories(char* currDir, char* outputDir, int pid, char* columnToSort
 					if(pid == 0){
 						char* subDir = directoryStringAppend(currDir, entry->d_name);
 						numProcesses = subLevelDriver(subDir, outputDir, pid, 1, columnToSortOn);
-						if(DEBUG){ printf("%s\n", subDir); } 
+						if(DEBUG){ printf("%s\n", subDir); }
 						free(subDir);
 						exit(numProcesses);
 					} else {
 						pid_t cpid =  waitpid(pid, &stat, 0);
 						printf("%d,", pid);
-						if(DEBUG){ printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat)); } 
+						if(DEBUG){ printf("Child %d terminated with status: %d\n", cpid, WEXITSTATUS(stat)); }
 						numProcesses += WEXITSTATUS(stat);
 						continue;
 					}
@@ -770,7 +770,7 @@ int subLevelDriver(char* currDir, char* outputDir, int pid, int numProcesses, ch
 int main(int argc, char *argv[]){
     //check if there are correct # of argument inputs
 
-    if (argc >= 3){
+    if (argc >= 3 && argc <= 7){
 
     	// testing if we can see all directory and file names as well as subdirectories
     	//DIR *dir;
@@ -806,10 +806,11 @@ int main(int argc, char *argv[]){
   			}
   			else if(strcmp(argv[i], "-o") == 0){
   				outputDir = directoryStringAppend(outputDir, argv[i+1]);
-  			} 
+  			}
   			else {
   				printf("FATAL ERROR: ARGUMENTS WITHOUT TAG\n");
   				write(2, "FATAL ERROR: ARGUMENTS WITHOUT TAG\n", 100);
+  				//would like program to terminate after this so it doesnt print stff below.
   				return 1;
   			}
 
@@ -825,13 +826,10 @@ int main(int argc, char *argv[]){
   		fflush(stdout);
   		numProcesses = subLevelDriver(currDir, outputDir, pid, numProcesses, columnToSortOn);
 
-		
+
   		printf("\b \nTotal number of processes: %d\n", numProcesses);
 
-
-
-
-
+        free(columnToSortOn);
     	//sortCsv(argv);
     }else {
 //        fprintf(stderr, "\nERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS\n");   - same error statement but with stderr
