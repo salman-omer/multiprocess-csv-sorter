@@ -53,6 +53,12 @@ int printMoviesAsCsv(movieLine* head, int numColumns, char** columnNames, char* 
 	int i;
 
 	FILE *fp = fopen(filePath, "w");
+
+	if(fp == NULL){
+		write(2, "File not initializable\n", 50);
+		return 1;
+	}
+
 	for (i = 0; i < numColumns; ++i)
 	{
 		fprintf(fp, "%s", columnNames[i]);
@@ -372,6 +378,7 @@ int sortCsv(char* columnToSortOn, char* filePath, char* outputDir){
 	//Check if file is a csv
 	if(isCSV(filePath) != 0){
 		if(DEBUG){ printf("%s is NOT a csv\n", filePath); }
+		fprintf(stderr, "%s is NOT a csv\n", filePath);
 		return 1;
 	} else {
 		outputFilePath = getOutputCSVFilePath(filePath, outputDir, columnToSortOn);
@@ -777,7 +784,7 @@ int main(int argc, char *argv[]){
   		//struct dirent *entry;
   		int pid = 0;
   		int numProcesses = 1;
-  		char* columnToSortOn;
+  		char* columnToSortOn = NULL;
   		char* currDir = "./";
   		char* outputDir = "./";
 
@@ -814,6 +821,11 @@ int main(int argc, char *argv[]){
   				return 1;
   			}
 
+  		}
+
+  		if(columnToSortOn == NULL){
+  			printf("FATAL ERROR: NO COLUMN TO SORT ON\n");
+  			write(2, "FATAL ERROR: NO COLUMN TO SORT ON\n", 100);
   		}
 
   		if(DEBUG3) {printf("%d\n", __LINE__);}
