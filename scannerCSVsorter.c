@@ -826,12 +826,11 @@ int main(int argc, char *argv[]){
   		if(columnToSortOn == NULL){
   			printf("FATAL ERROR: NO COLUMN TO SORT ON\n");
   			write(2, "FATAL ERROR: NO COLUMN TO SORT ON\n", 100);
+  			return 1;
   		}
 
   		if(DEBUG3) {printf("%d\n", __LINE__);}
   		if(DEBUG3) {printf("Curr Dir %s  output Dir %s\n", currDir, outputDir);}
-
-
 
   		printf("Initial PID: %d\n", getpid());
   		printf("PIDS of all child processes: ");
