@@ -55,7 +55,7 @@ int printMoviesAsCsv(movieLine* head, int numColumns, char** columnNames, char* 
 	FILE *fp = fopen(filePath, "w");
 
 	if(fp == NULL){
-		write(2, "File not initializable\n", 50);
+		write(2, "File not initializable\n", 24);
 		return 1;
 	}
 
@@ -487,6 +487,10 @@ int sortCsv(char* columnToSortOn, char* filePath, char* outputDir){
     int movieLineCharacterIndex = 0;
     if(DEBUG2){ printf("Line %d\n", __LINE__);}
     while(read(fd, &buffer, 1) != 0){
+    	if(cellNumber >= numColumns){
+    		write(2, "ERROR: more data than allowed columns, aborting\n", 49);
+    		return 1;
+    	}
         if(buffer == '"'){
             quotationMark = !quotationMark;
             individualMovieLine[movieLineCharacterIndex] = buffer;
@@ -576,7 +580,7 @@ int sortCsv(char* columnToSortOn, char* filePath, char* outputDir){
             printMoviesAsCsv(moviesLL->head, numColumns, columnNames, outputFilePath);
         }else
         {
-            write(2, "ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n", 100);
+            write(2, "ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n", 46);
         }
 
 
@@ -600,11 +604,11 @@ int sortCsv(char* columnToSortOn, char* filePath, char* outputDir){
             printMoviesAsCsv(moviesLL->head, numColumns, columnNames, outputFilePath);
         }else
         {
-            write(2, "ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n", 100);
+            write(2, "ERROR: INPUTTED COLUMN NAME DOES NOT EXIST!\n\n", 46);
         }
     }else
     {
-        write(2, "ERROR: INVALID COLUMN NAME!\n\n", 100);
+        write(2, "ERROR: INVALID COLUMN NAME!\n\n", 30);
     }
 
     //After sorting!
@@ -790,7 +794,7 @@ int main(int argc, char *argv[]){
 
   		if(argc % 2 == 0){
   			printf("FATAL ERROR: INCORRECT NUMBER OF INPUTS\n");
-  			write(2, "FATAL ERROR: INCORRECT NUMBER OF INPUTS\n", 100);
+  			write(2, "FATAL ERROR: INCORRECT NUMBER OF INPUTS\n", 41);
   			return 1;
   		}
 
@@ -800,7 +804,7 @@ int main(int argc, char *argv[]){
   		for(i = 1; i < argc; i = i + 2){
   			if(argv[i+1][0] == '-'){
   				printf("FATAL ERROR: ARGUMENT NOT SPECIFIED FOR TAG\n");
-  				write(2, "FATAL ERROR: ARGUMENT NOT SPECIFIED FOR TAG\n", 100);
+  				write(2, "FATAL ERROR: ARGUMENT NOT SPECIFIED FOR TAG\n", 45);
   				return 1;
   			}
   			if(strcmp(argv[i], "-c") == 0){
@@ -816,7 +820,7 @@ int main(int argc, char *argv[]){
   			}
   			else {
   				printf("FATAL ERROR: ARGUMENTS WITHOUT TAG\n");
-  				write(2, "FATAL ERROR: ARGUMENTS WITHOUT TAG\n", 100);
+  				write(2, "FATAL ERROR: ARGUMENTS WITHOUT TAG\n", 36);
   				//would like program to terminate after this so it doesnt print stff below.
   				return 1;
   			}
@@ -825,7 +829,7 @@ int main(int argc, char *argv[]){
 
   		if(columnToSortOn == NULL){
   			printf("FATAL ERROR: NO COLUMN TO SORT ON\n");
-  			write(2, "FATAL ERROR: NO COLUMN TO SORT ON\n", 100);
+  			write(2, "FATAL ERROR: NO COLUMN TO SORT ON\n", 35);
   			return 1;
   		}
 
@@ -845,7 +849,7 @@ int main(int argc, char *argv[]){
     }else {
 //        fprintf(stderr, "\nERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS\n");   - same error statement but with stderr
         printf("ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n\n");
-        write(2, "ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n\n", 100);
+        write(2, "ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n\n", 47);
     }
     return 0;
 }
