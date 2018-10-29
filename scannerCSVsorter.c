@@ -810,6 +810,17 @@ int main(int argc, char *argv[]){
             if(DEBUG3){printf("%s\n", columnToSortOn);};
         }
 
+        //check duplicate -d or -o flag
+        if (argv[3] != NULL && argv[5] != NULL)
+        {
+            if(strcmp(argv[3], argv[5]) == 0)
+            {
+                printf("FATAL ERROR: DUPLICATE FLAGS\n");
+  				write(2, "FATAL ERROR: DUPLICATE FLAGS\n", 30);
+  				return 1;
+            }
+        }
+
   		for(i = 3; i < argc; i = i + 2){
   			if(argv[i+1][0] == '-'){
   				printf("FATAL ERROR: ARGUMENT NOT SPECIFIED FOR TAG\n");
