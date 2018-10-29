@@ -800,36 +800,56 @@ int main(int argc, char *argv[]){
 
   		if(DEBUG3) {printf("%d\n", __LINE__);}
 
-  		int i;
-  		for(i = 1; i < argc; i = i + 2){
+  		int i = 1;
+
+        //check -c flag first
+  		if(strcmp(argv[i], "-c") == 0)
+        {
+            columnToSortOn = malloc(sizeof(char) * (strlen(argv[i+1]) + 1));
+            strcpy(columnToSortOn, argv[i+1]);
+            if(DEBUG3){printf("%s\n", columnToSortOn);};
+        }
+
+  		for(i = 3; i < argc; i = i + 2){
   			if(argv[i+1][0] == '-'){
   				printf("FATAL ERROR: ARGUMENT NOT SPECIFIED FOR TAG\n");
   				write(2, "FATAL ERROR: ARGUMENT NOT SPECIFIED FOR TAG\n", 45);
   				return 1;
   			}
-  			if(strcmp(argv[i], "-c") == 0){
-  				columnToSortOn = malloc(sizeof(char) * (strlen(argv[i+1]) + 1));
-  				strcpy(columnToSortOn, argv[i+1]);
-  				if(DEBUG3){printf("%s\n", columnToSortOn);};
-  			}
-  			else if(strcmp(argv[i], "-d") == 0){
+
+            //check -d flag
+  			if(strcmp(argv[i], "-d") == 0){
   				currDir = directoryStringAppend(currDir, argv[i+1]);
+
+                if (!opendir(currDir))
+                {
+                    printf("FATAL ERROR: INVALID DIRECTORY\n");
+                    write(2, "FATAL ERROR: INVALID DIRECTORY\n", 32);
+                    return 1;
+                }
   			}
+  			//check -o flag
   			else if(strcmp(argv[i], "-o") == 0){
   				outputDir = directoryStringAppend(outputDir, argv[i+1]);
+
+                if (!opendir(outputDir))
+                {
+                    printf("FATAL ERROR: INVALID DIRECTORY\n");
+                    write(2, "FATAL ERROR: INVALID DIRECTORY\n", 32);
+                    return 1;
+                }
   			}
   			else {
   				printf("FATAL ERROR: ARGUMENTS WITHOUT TAG\n");
   				write(2, "FATAL ERROR: ARGUMENTS WITHOUT TAG\n", 36);
-  				//would like program to terminate after this so it doesnt print stff below.
   				return 1;
   			}
 
   		}
 
   		if(columnToSortOn == NULL){
-  			printf("FATAL ERROR: NO COLUMN TO SORT ON\n");
-  			write(2, "FATAL ERROR: NO COLUMN TO SORT ON\n", 35);
+  			printf("FATAL ERROR: -C FLAG MISSING\n");
+  			write(2, "FATAL ERROR: -C FLAG MISSING\n", 30);
   			return 1;
   		}
 
@@ -848,8 +868,8 @@ int main(int argc, char *argv[]){
     	//sortCsv(argv);
     }else {
 //        fprintf(stderr, "\nERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS\n");   - same error statement but with stderr
-        printf("ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n\n");
-        write(2, "ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n\n", 47);
+        printf("FATAL ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n");
+        write(2, "FATAL ERROR: ENTER IN CORRECT NUMBER OF ARGUMENTS!\n", 52);
     }
     return 0;
 }
